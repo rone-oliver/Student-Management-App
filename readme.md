@@ -16,7 +16,7 @@ Antony Rone Oliver
 ## 📥 Installation Instructions
 ### 1️⃣ Clone the repository
 ```
-git clone https://github.com/antonyroneoliver/Student-Mangement-App.git
+git clone https://github.com/noliv-21/Student-Management-App.git
 cd Student-Mangement-App
 ```
 #### **Install Dependencies**
