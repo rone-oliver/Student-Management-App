@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Management App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #e0eafc, #cfdef3);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border-radius: 15px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.15);
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            transition: all 0.3s ease;
+        }
+
+        h1 {
+            text-align: center;
+            color: #4a4a4a;
+            font-size: 28px;
+        }
+
+        /* Form Styling */
+        .form-container {
+            margin-bottom: 20px;
+        }
+
+        .form-container h2 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding-left: 20px;
+            padding-right: 20px;
+            align-items: center;
+        }
+
+        input, button {
+            padding: 12px;
+            width: 100%;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        input {
+            background: rgba(255, 255, 255, 0.85);
+        }
+
+        input:focus {
+            background: rgba(255, 255, 255, 1);
+            outline: none;
+            box-shadow: 0 0 8px rgba(0, 150, 255, 0.5);
+        }
+
+        button {
+            background: #4caf50;
+            color: white;
+            cursor: pointer;
+            transition: 0.3s ease-in-out;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #3e8e41;
+            transform: translateY(-2px);
+        }
+
+        /* Student List */
+        .student-list {
+            margin-top: 20px;
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .student-item {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        .student-item:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .student-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .student-actions button {
+            background: transparent;
+            border: none;
+            color: #e74c3c;
+            cursor: pointer;
+            font-size: 18px;
+            transition: color 0.3s;
+        }
+
+        .student-actions button:hover {
+            color: #c0392b;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Management</h1>
+        <div class="form-container">
+            <h2>Create Student</h2>
+            <div class="input-group">
+                <input type="text" id="studentName" placeholder="Name">
+                <input type="number" id="studentAge" placeholder="Age">
+                <input type="text" id="studentCourse" placeholder="Course">
+                <button id="createStudentBtn">Create Student</button>
+            </div>
+        </div>
+
+        <h2>Student List</h2>
+        <ul id="studentList" class="student-list"></ul>
+    </div>
+
+    <script>
+        document.getElementById("createStudentBtn").addEventListener("click", createStudent);
+
+        function getAllStudents() {
+            return fetch('/api/students')
+                .then(response => response.json())
+                .catch(err => {
+                    console.error("Error fetching students:", err);
+                    return { data: [] };
+                });
+        }
+
+        function displayStudents() {
+            getAllStudents().then(students => {
+                const studentList = document.getElementById('studentList');
+                studentList.innerHTML = '';
+
+                if (students.success && Array.isArray(students.data)) {
+                    students.data.forEach(student => {
+                        const li = document.createElement('li');
+                        li.className = 'student-item';
+                        li.innerHTML = `
+                            <span>${student.name} - ${student.course}</span>
+                            <div class="student-actions">
+                                <button onclick="editStudent(${student.id})">✏️</button>
+                                <button onclick="deleteStudent(${student.id})">❌</button>
+                            </div>
+                        `;
+                        studentList.appendChild(li);
+                    });
+                }
+            });
+        }
+
+        function createStudent() {
+            const name = document.getElementById("studentName").value;
+            const age = document.getElementById("studentAge").value;
+            const course = document.getElementById("studentCourse").value;
+
+            if (name && age && course) {
+                fetch('/api/students', {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, age: Number(age), course }),
+                })
+                .then(response => response.json())
+                .then(() => {
+                    alert("Student created!");
+                    displayStudents();
+                    clearForm();
+                })
+                .catch(error => console.error("Error creating student:", error));
+            } else {
+                alert("Please fill in all fields");
+            }
+        }
+
+        function deleteStudent(id) {
+            fetch(`/api/students/${id}`, { method: "DELETE" })
+                .then(response => response.json())
+                .then(() => {
+                    alert("Student deleted!");
+                    displayStudents();
+                })
+                .catch(error => console.error("Error deleting student:", error));
+        }
+
+        function editStudent(id) {
+            const name = prompt("Enter new name:");
+            const age = prompt("Enter new age:");
+            const course = prompt("Enter new course:");
+
+            if (name || age || course) {
+                const student = fetch(`/api/students/${id}`).then(response => response.json());
+                // let student = studentResponse.json();
+                let editStudent = {...student};
+                if(name!==student.name && name.trim()!==''){
+                    editStudent.name = name;
+                }
+                if(age!==student.age && age.trim()!==''){
+                    editStudent.age = age;
+                }
+                if(course!==student.course && course.trim()!==''){
+                    editStudent.course = course;
+                }
+                fetch(`/api/students/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({...editStudent}),
+                })
+                .then(response => response.json())
+                .then(() => {
+                    alert("Student updated!");
+                    displayStudents();
+                })
+                .catch(error => console.error("Error updating student:", error));
+            } else {
+                alert("Please fill in all fields");
+            }
+        }
+
+        function clearForm() {
+            document.getElementById("studentName").value = "";
+            document.getElementById("studentAge").value = "";
+            document.getElementById("studentCourse").value = "";
+        }
+
+        document.addEventListener('DOMContentLoaded', displayStudents);
+    </script>
+</body>
+</html>
