@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -55,7 +56,8 @@
             align-items: center;
         }
 
-        input, button {
+        input,
+        button {
             padding: 12px;
             width: 100%;
             border: none;
@@ -128,8 +130,24 @@
             color: #c0392b;
         }
 
+        .student-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .student-table th,
+        .student-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .student-table th {
+            background-color: #f2f2f2;
+        }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Student Management</h1>
@@ -165,33 +183,79 @@
                 studentList.innerHTML = '';
 
                 if (students.success && Array.isArray(students.data)) {
+                    // Create the table and header
+                    const table = document.createElement('table');
+                    table.className = 'student-table';
+                    table.innerHTML = `
+                                        <thead>
+                                            <tr>
+                                                <th>Name</th>
+                                                <th>Age</th>
+                                                <th>Course</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    `;
+
+                    const tbody = table.querySelector('tbody');
+
+                    // Populate the table with student data
                     students.data.forEach(student => {
-                        const li = document.createElement('li');
-                        li.className = 'student-item';
-                        li.innerHTML = `
-                            <span>${student.name} - ${student.course}</span>
-                            <div class="student-actions">
-                                <button onclick="editStudent(${student.id})">✏️</button>
-                                <button onclick="deleteStudent(${student.id})">❌</button>
-                            </div>
-                        `;
-                        studentList.appendChild(li);
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                                        <td>${student.name}</td>
+                                        <td>${student.age}</td>
+                                        <td>${student.course}</td>
+                                        <td class="student-actions">
+                                            <button onclick="editStudent(${student.id})">✏️</button>
+                                            <button onclick="deleteStudent(${student.id})">❌</button>
+                                        </td>
+                                    `;
+                        tbody.appendChild(tr);
                     });
+
+                    // Append the table to the student list container
+                    studentList.innerHTML = ''; // Clear previous content
+                    studentList.appendChild(table);
                 }
             });
         }
 
-        function createStudent() {
-            const name = document.getElementById("studentName").value;
-            const age = document.getElementById("studentAge").value;
-            const course = document.getElementById("studentCourse").value;
+        function validateStudent(name, age, course) {
+            const nameRegex = /^[A-Za-z\s]{3,}$/; // Name: At least 3 letters
+            const ageNumber = Number(age);
 
-            if (name && age && course) {
-                fetch('/api/students', {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ name, age: Number(age), course }),
-                })
+            if (!nameRegex.test(name)) {
+                alert("Invalid Name: Must be at least 3 characters and contain only letters.");
+                return false;
+            }
+            if (isNaN(ageNumber) || ageNumber < 5 || ageNumber > 100) {
+                alert("Invalid Age: Must be a number between 5 and 100.");
+                return false;
+            }
+            if (course.trim().length < 3) {
+                alert("Invalid Course: Must be at least 3 characters long.");
+                return false;
+            }
+            return true;
+        }
+
+        function createStudent() {
+            const name = document.getElementById("studentName").value.trim();
+            const age = document.getElementById("studentAge").value.trim();
+            const course = document.getElementById("studentCourse").value.trim();
+
+            if (!validateStudent(name, age, course)) {
+                return;
+            }
+
+            fetch('/api/students', {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ name, age: Number(age), course }),
+            })
                 .then(response => response.json())
                 .then(() => {
                     alert("Student created!");
@@ -199,10 +263,8 @@
                     clearForm();
                 })
                 .catch(error => console.error("Error creating student:", error));
-            } else {
-                alert("Please fill in all fields");
-            }
         }
+
 
         function deleteStudent(id) {
             fetch(`/api/students/${id}`, { method: "DELETE" })
@@ -214,37 +276,62 @@
                 .catch(error => console.error("Error deleting student:", error));
         }
 
-        function editStudent(id) {
-            const name = prompt("Enter new name:");
-            const age = prompt("Enter new age:");
-            const course = prompt("Enter new course:");
+        async function editStudent(id) {
+            try {
+                // Fetch the existing student details
+                const dataResponse = await fetch(`/api/students/${id}`);
+                const studentResponse = await dataResponse.json();
+                const student = studentResponse.data;
 
-            if (name || age || course) {
-                const student = fetch(`/api/students/${id}`).then(response => response.json());
-                // let student = studentResponse.json();
-                let editStudent = {...student};
-                if(name!==student.name && name.trim()!==''){
-                    editStudent.name = name;
+                // Get updated values with defaulting to the existing ones
+                let name = prompt("Enter new name:", student.name);
+                let age = prompt("Enter new age:", student.age);
+                let course = prompt("Enter new course:", student.course);
+
+                // If user cancels the prompt, keep the existing values
+                if (name === null) name = student.name;
+                if (age === null) age = student.age;
+                if (course === null) course = student.course;
+
+                // Trim values if not null
+                name = name.trim();
+                age = age.trim();
+                course = course.trim();
+
+                // Validate inputs
+                if (!validateStudent(name, age, course)) {
+                    return;
                 }
-                if(age!==student.age && age.trim()!==''){
-                    editStudent.age = age;
+
+                // Convert age to number
+                const updatedStudent = {
+                    ...student,
+                    name,
+                    age: Number(age),
+                    course
+                };
+
+                // Check if anything actually changed before making an API request
+                if (
+                    name === student.name &&
+                    Number(age) === student.age &&
+                    course === student.course
+                ) {
+                    alert("No changes detected. Student not updated.");
+                    return;
                 }
-                if(course!==student.course && course.trim()!==''){
-                    editStudent.course = course;
-                }
-                fetch(`/api/students/${id}`, {
+
+                // Send the updated student data to the backend
+                await fetch(`/api/students/${id}`, {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({...editStudent}),
-                })
-                .then(response => response.json())
-                .then(() => {
-                    alert("Student updated!");
-                    displayStudents();
-                })
-                .catch(error => console.error("Error updating student:", error));
-            } else {
-                alert("Please fill in all fields");
+                    body: JSON.stringify(updatedStudent),
+                });
+
+                alert("Student updated!");
+                displayStudents();
+            } catch (error) {
+                console.error("Error updating student:", error);
             }
         }
 
@@ -257,4 +344,5 @@
         document.addEventListener('DOMContentLoaded', displayStudents);
     </script>
 </body>
+
 </html>
