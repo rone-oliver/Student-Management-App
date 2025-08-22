@@ -1,7 +1,6 @@
 import express from "express";
 import studentRoute from "./routes/studentRoute.js";
 import bodyParser from 'body-parser';
-import path from 'path';
 
 const app = express();
 const PORT = 5005;

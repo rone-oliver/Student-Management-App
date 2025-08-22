@@ -14,7 +14,7 @@ export abstract class StudentRepository {
 
 export class InMemoryStudentRepository implements StudentRepository {
     private students: Student[]=[];
-    private currentId: number = 1;
+    private currentId: number = 0;
 
     async create(student: CreateStudentRequest): Promise<Student> {
         const newStudent: Student = { id: this.currentId++, ...student};
